@@ -9,6 +9,7 @@ int parallel_program(int threads, int random_seed, double *time) {
 
     int *array;                 ///< The array we need to find the max in
     int index = -1;                ///< The index of the element we need
+    volatile int found = 0;
 
     /* Initialize the RNG */
     srand(random_seed);
@@ -20,15 +21,14 @@ int parallel_program(int threads, int random_seed, double *time) {
 
     double start_time = omp_get_wtime();
     /* Find the index of the element */
-#pragma omp parallel num_threads(threads) shared(index)
+#pragma omp parallel num_threads(threads) shared(index, count, array, target, found) default(none)
     {
 #pragma omp for
-        for (int i = 0; i < count && index == -1; i++) {
+        for (int i = 0; i < count; i++) {
+            if (found) break
             if (array[i] == target) {
-#pragma omp critical // нужна ли теперь critical
-                {
-                    index = i;
-                }
+                index = i;
+                found = 1;
             }
         }
     }
@@ -49,8 +49,8 @@ int main() {
             res[i - 1][j] = parallel_program(i, random_seed + j, &time[i + j - 1]);
         }
     }
-    for (int i = 0; i < 160; i++){
-        printf("%f", time[i]);
+    for (int i = 0; i < 160; i++) {
+        printf("%f\n", time[i]);
     }
     return 0;
 }
